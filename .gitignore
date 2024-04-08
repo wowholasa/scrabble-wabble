@@ -1,0 +1,14 @@
+.vs
+.vs/*
+
+.idea/*
+.idea
+
+/ScrabbleBot/obj/*
+/ScrabbleBot/bin/*
+
+/ScrabbleTemplate/obj/*
+/ScrabbleTemplate/bin/*
+
+obj
+bin
