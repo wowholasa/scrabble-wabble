@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "8U19Lz5Im4XQcwMptK2wAWQUqBWoh+RYbOorYrl8EJPyoqPtkXSERHm7dfYBzRgFi/EkChqwgsfFZ/1rWug+9A==",
+  "success": true,
+  "projectFilePath": "/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/ScrabbleBot.fsproj",
+  "expectedPackageFiles": [
+    "/home/macj/.nuget/packages/fparsec/1.1.1/fparsec.1.1.1.nupkg.sha512",
+    "/home/macj/.nuget/packages/fsharp.core/7.0.200/fsharp.core.7.0.200.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -41,6 +41,8 @@ module State =
     // but it could, potentially, keep track of other useful
     // information, such as number of players, player turn, etc.
 
+
+    // Add map to the state that is the state of the board
     type state = {
         board         : Parser.board
         dict          : ScrabbleUtil.Dictionary.Dict

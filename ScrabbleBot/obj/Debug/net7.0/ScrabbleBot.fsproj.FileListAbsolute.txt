@@ -1,0 +1,14 @@
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/bin/Debug/net7.0/ScrabbleBot.deps.json
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/bin/Debug/net7.0/ScrabbleBot.dll
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/bin/Debug/net7.0/ScrabbleBot.pdb
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/bin/Debug/net7.0/ScrabbleUtil.dll
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/ScrabbleBot.fsproj.AssemblyReference.cache
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/ScrabbleBot.AssemblyInfoInputs.cache
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/ScrabbleBot.AssemblyInfo.fs
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/ScrabbleBot.fsproj.CoreCompileInputs.cache
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/ScrabbleBot.sourcelink.json
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/Scrabble.3728C117.Up2Date
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/ScrabbleBot.dll
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/refint/ScrabbleBot.dll
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/ScrabbleBot.pdb
+/mnt/c/Users/mchrn/ITU/4_semester/Functional_Programming/scrabble-wabble/ScrabbleBot/obj/Debug/net7.0/ref/ScrabbleBot.dll
