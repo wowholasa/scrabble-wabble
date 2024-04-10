@@ -45,8 +45,7 @@ let main argv =
 
     let dictAPI =
         // Uncomment if you have implemented a dictionary. last element None if you have not implemented a GADDAG
-        // Some (Dictionary.empty, Dictionary.insert, Dictionary.step, Some Dictionary.reverse) 
-        None
+        Some (Dictionary.empty, Dictionary.insert, Dictionary.step, None)
         
     // Uncomment this line to call your client
     // let players    = [("Your name here", YourClientName.Scrabble.startGame)]
