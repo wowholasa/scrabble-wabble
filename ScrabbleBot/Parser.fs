@@ -127,4 +127,4 @@ module internal Parser
         defaultSquare : square
         squares       : boardFun2
     }
-    let mkBoard (bp: boardProg) : board = failwith "not implemented"
+    let mkBoard : boardProg -> board = fun _ -> {center = (0,0); defaultSquare = Map.empty; squares = fun _ -> Success (Some Map.empty)}
