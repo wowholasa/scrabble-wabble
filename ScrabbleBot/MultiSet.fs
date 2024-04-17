@@ -1,4 +1,5 @@
-module MultiSet
+// Has been replaced with our implementation
+module internal MultiSet
 
 type MultiSet<'a when 'a: comparison> = R of Map<'a, uint32> // replace with your type
 

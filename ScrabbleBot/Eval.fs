@@ -1,17 +1,17 @@
-﻿// Insert your updated Eval.fs file here from Assignment 7. All modules must be internal.
+﻿// File has been updated with our own
 
-module Eval
+module internal Eval
 
     open StateMonad
     
     (* Code for testing *)
 
-    let internal hello = [('H', 4) ; ('E', 1) ; ('L', 1) ; ('L', 1) ; ('O',1)] 
-    let internal state = mkState [("x", 5); ("y", 42)] hello ["_pos_"; "_result_"]
-    let internal emptyState = mkState [] [] []
+    let hello = [('H', 4) ; ('E', 1) ; ('L', 1) ; ('L', 1) ; ('O',1)] 
+    let state = mkState [("x", 5); ("y", 42)] hello ["_pos_"; "_result_"]
+    let emptyState = mkState [] [] []
 
 
-    type internal aExp =
+    type aExp =
         | N of int
         | V of string
         | WL
@@ -23,14 +23,14 @@ module Eval
         | Mod of aExp * aExp
         | CharToInt of cExp
 
-    and internal cExp =
+    and cExp =
        | C  of char  (* Character value *)
        | CV of aExp  (* Character lookup at word index *)
        | ToUpper of cExp
        | ToLower of cExp
        | IntToChar of aExp
 
-    type internal bExp =             
+    type bExp =             
        | TT                   (* true *)
        | FF                   (* false *)
 
@@ -44,34 +44,36 @@ module Eval
        | IsLetter of cExp     (* check for letter *)
        | IsDigit of cExp      (* check for digit *)
 
-    let internal (.+.) a b = Add (a, b)
-    let internal (.-.) a b = Sub (a, b)
-    let internal (.*.) a b = Mul (a, b)
-    let internal (./.) a b = Div (a, b)
-    let internal (.%.) a b = Mod (a, b)
-
-    let internal (~~) b = Not b
-    let internal (.&&.) b1 b2 = Conj (b1, b2)
-    let internal (.||.) b1 b2 = ~~(~~b1 .&&. ~~b2)       (* boolean disjunction *)
-    let internal (.->.) b1 b2 = (~~b1) .||. b2           (* boolean implication *) 
+    let (.+.) a b = Add (a, b)
+    let (.-.) a b = Sub (a, b)
+    let (.*.) a b = Mul (a, b)
+    let (./.) a b = Div (a, b)
+    let (.%.) a b = Mod (a, b)
+    let (~~) b = Not b
+    let (.&&.) b1 b2 = Conj (b1, b2)
+    let (.||.) b1 b2 = ~~(~~b1 .&&. ~~b2)       (* boolean disjunction *)
+    let (.->.) b1 b2 = (~~b1) .||. b2           (* boolean implication *) 
        
-    let internal (.=.) a b = AEq (a, b)   
-    let internal (.<.) a b = ALt (a, b)   
-    let internal (.<>.) a b = ~~(a .=. b)
-    let internal (.<=.) a b = a .<. b .||. ~~(a .<>. b)
-    let internal (.>=.) a b = ~~(a .<. b)                (* numeric greater than or equal to *)
-    let internal (.>.) a b = ~~(a .=. b) .&&. (a .>=. b) (* numeric greater than *)    
+    let (.=.) a b = AEq (a, b)   
+    let (.<.) a b = ALt (a, b)   
+    let (.<>.) a b = ~~(a .=. b)
+    let (.<=.) a b = a .<. b .||. ~~(a .<>. b)
+    let (.>=.) a b = ~~(a .<. b)                (* numeric greater than or equal to *)
+    let (.>.) a b = ~~(a .=. b) .&&. (a .>=. b) (* numeric greater than *)    
 
-    let internal add (a: SM<int>) (b: SM<int>) = a >>= (fun x -> b >>= (fun y -> ret (x+y)))
-    let internal sub (a: SM<int>) (b: SM<int>) = a >>= (fun x -> b >>= (fun y -> ret (x-y)))
-    let internal mul (a: SM<int>) (b: SM<int>) = a >>= (fun x -> b >>= (fun y -> ret (x*y)))
-    let internal modu a b = a >>= (fun x -> b >>= (fun y -> if (y = 0) then fail (DivisionByZero) else ret (x%y)))
-    let internal aeq a b = a >>= (fun x -> b >>= (fun y -> ret (x=y)))
-    let internal alt a b = a >>= (fun x -> b >>= (fun y -> ret (x<y)))
-    let internal conj a b = a >>= (fun x -> b >>= (fun y -> ret (x&&y)))
-    let internal div a b = a >>= (fun x -> b >>= (fun y -> if (y = 0) then fail (DivisionByZero) else ret (x/y))) 
+    let add (a: SM<int>) (b: SM<int>) = a >>= (fun x -> b >>= (fun y -> ret (x+y)))
+    let sub (a: SM<int>) (b: SM<int>) = a >>= (fun x -> b >>= (fun y -> ret (x-y)))
+    let mul (a: SM<int>) (b: SM<int>) = a >>= (fun x -> b >>= (fun y -> ret (x*y)))
+    let modu a b = a >>= (fun x -> b >>= (fun y -> if (y = 0) then fail (DivisionByZero) else ret (x%y)))
+    let aeq a b = a >>= (fun x -> b >>= (fun y -> ret (x=y)))
+    let alt a b = a >>= (fun x -> b >>= (fun y -> ret (x<y)))
+    let conj a b = a >>= (fun x -> b >>= (fun y -> ret (x&&y)))
+    let div a b = a >>= (fun x -> b >>= (fun y -> if (y = 0) then fail (DivisionByZero) else ret (x/y))) 
+    let isVowel c =
+        ['A'; 'E'; 'I'; 'O'; 'U'] 
+        |> List.exists (fun d -> c = d || c = System.Char.ToLower d)
 
-    let rec internal arithEval (a: aExp) : SM<int> =
+    let rec arithEval (a: aExp) : SM<int> =
         match a with
         | WL -> wordLength
         | PV x -> (arithEval x) >>= pointValue
@@ -83,14 +85,14 @@ module Eval
         | Div (x, y) -> div (arithEval x) (arithEval y)
         | N x -> ret x
         | CharToInt x -> charEval x >>= (fun a -> ret(int a))
-    and internal charEval (c: cExp) : SM<char> = 
+    and charEval (c: cExp) : SM<char> = 
         match c with
         | C x -> ret x  
         | CV x -> (arithEval x) >>= characterValue 
         | ToUpper x -> charEval x >>= (fun a -> ret (System.Char.ToUpper a))
         | ToLower x -> charEval x >>= (fun a -> ret (System.Char.ToLower a))
         | IntToChar x -> arithEval x >>= (fun a -> ret (char a))
-    and internal boolEval (b: bExp) : SM<bool> = 
+    and boolEval (b: bExp) : SM<bool> = 
         match b with
         | TT -> ret true
         | FF -> ret false
@@ -100,10 +102,10 @@ module Eval
         | Conj (x, y) -> conj (boolEval x) (boolEval y)
         | IsDigit x -> charEval x >>= (fun a -> ret (System.Char.IsDigit a))
         | IsLetter x -> charEval x >>= (fun a -> ret (System.Char.IsLetter a))
-        | IsVowel x -> charEval x >>= (fun a -> ret ("aeuioæøå".Contains(System.Char.ToLower a)))
+        | IsVowel x -> charEval x >>= (fun a -> ret (isVowel a))
 
 
-    type internal stmnt =                  (* statements *)
+    type stmnt =                  (* statements *)
     | Declare of string           (* variable declaration *)
     | Ass of string * aExp        (* variable assignment *)
     | Skip                        (* nop *)
@@ -111,7 +113,7 @@ module Eval
     | ITE of bExp * stmnt * stmnt (* if-then-else statement *)
     | While of bExp * stmnt       (* while statement *)
 
-    let rec internal stmntEval stmnt : SM<unit> =
+    let rec stmntEval stmnt : SM<unit> =
         match stmnt with
         | Declare x -> declare x
         | Ass (x, y) -> ((arithEval y) >>= (fun a -> update x a))
@@ -122,7 +124,7 @@ module Eval
 
 (* Part 3 (Optional) *)
 
-    type internal StateBuilder() =
+    type StateBuilder() =
 
         member this.Bind(f, x)    = f >>= x
         member this.Return(x)     = ret x
@@ -130,7 +132,7 @@ module Eval
         member this.Delay(f)      = f ()
         member this.Combine(a, b) = a >>= (fun _ -> b)
         
-    let internal prog = new StateBuilder()
+    let prog = new StateBuilder()
 
     let arithEval2 a = failwith "Not implemented"
     let charEval2 c = failwith "Not implemented"
@@ -144,7 +146,7 @@ module Eval
 
     let stmntToBoardFun stm m = failwith "Not implemented"
 
-    type internal squareStmnt = Map<int, stmnt>
+    type squareStmnt = Map<int, stmnt>
     let stmntsToSquare stms = failwith "Not implemented"
 
     let mkBoard c x boardStmnt ids = failwith "Not implemented"
