@@ -50,14 +50,16 @@ module State =
         dict          : ScrabbleUtil.Dictionary.Dict
         playerNumber  : uint32
         hand          : MultiSet.MultiSet<uint32>
+        placedTiles   : Map<coord, uint32>
     }
 
-    let mkState b d pn h = {board = b; dict = d;  playerNumber = pn; hand = h }
+    let mkState b d pn h pt= {board = b; dict = d;  playerNumber = pn; hand = h; placedTiles = pt}
 
     let board st         = st.board
     let dict st          = st.dict
     let playerNumber st  = st.playerNumber
     let hand st          = st.hand
+    let placedTiles st   = st.placedTiles
 
 module Scrabble =
     open System.Threading
@@ -81,7 +83,12 @@ module Scrabble =
             match msg with
             | RCM (CMPlaySuccess(ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
-                let st' = st // This state needs to be updated
+                let st' = st
+                // Remove the tiles used from our hand
+                let updateHand = List.fold (fun hand (coord, (id, (c, p))) -> MultiSet.remove id 1 hand) st'.hand ms
+                // This state needs to be updated
+                Print.printHand pieces (State.hand st')
+                let st' = { st with hand = updateHand }
                 aux st'
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
@@ -122,5 +129,5 @@ module Scrabble =
                   
         let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
 
-        fun () -> playGame cstream tiles (State.mkState board dict playerNumber handSet)
+        fun () -> playGame cstream tiles (State.mkState board dict playerNumber handSet )
         
