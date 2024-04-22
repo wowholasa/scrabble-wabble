@@ -42,7 +42,7 @@ module State =
     // Currently, it only keeps track of your hand, your player numer, your board, and your dictionary,
     // but it could, potentially, keep track of other useful
     // information, such as number of players, player turn, etc.
-
+    type coord = int * int
 
     // Add map to the state that is the state of the board
     type state = {
@@ -90,18 +90,6 @@ module Scrabble =
     //aux (0,0) List.empty st.dict st.hand    
 
 
-
-
-
-
-
-
-
-
-
-
-
-
     let playGame cstream pieces (st : State.state) =
 
         let rec aux (st : State.state) =
@@ -126,15 +114,20 @@ module Scrabble =
                 
                 // Remove the tiles used from our hand
                 let removePieces = List.fold (fun acc (_,(id,_)) -> MultiSet.removeSingle id acc) st'.hand ms
-                forcePrint "hand print after remove pieces is called\n"
-                Print.printHand pieces (State.hand st')
+                // debugPrint "\n hand print after remove pieces is called\n"
+                // Print.printHand pieces (State.hand st')
                 
                 // Add new tiles to hand
                 let addedPieces = List.fold (fun acc (id,amount) -> MultiSet.add id amount acc) removePieces newPieces
-                forcePrint "Hand print after pieces is added\n"
-                Print.printHand pieces (State.hand st')
+                // debugPrint "\n Hand print after pieces is added\n"
+                // Print.printHand pieces (State.hand st')
 
-                let st' = { st with hand = addedPieces }
+                // Update placeTiles map
+                let updatePlacedTiles = List.fold (fun acc ((x, y), (id, _)) -> Map.add (x, y) id acc) st'.placedTiles ms
+
+                let st' = { st with hand = addedPieces; placedTiles = updatePlacedTiles }
+                // debugPrint "\n Printing map of placedTiles\n"
+                // Map.iter (fun (x, y) id -> printfn "(%d, %d): %d" x y id) st'.placedTiles
                 aux st'
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
