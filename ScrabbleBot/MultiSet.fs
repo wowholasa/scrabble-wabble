@@ -37,7 +37,8 @@ let foldBack (f: 'a -> uint32 -> 'b -> 'b) (R s: MultiSet<'a>) (x: 'b) = Map.fol
 
 // Yellow exercises
 let ofList (lst: 'a list) : MultiSet<'a> = failwith ""
-let toList (R s: MultiSet<'a>) : 'a list = failwith "Hej Mads"
+let toList (R(s) : MultiSet<'a>) : 'a list =
+        (s,[]) ||> Map.foldBack (fun a b lst -> [for _ in 1u .. b -> a] @ lst)
 
 
 let map (_: 'a -> 'b) (_: MultiSet<'a>) : MultiSet<'b> = failwith "" // R ()

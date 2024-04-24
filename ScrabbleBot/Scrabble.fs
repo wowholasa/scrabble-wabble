@@ -86,19 +86,28 @@ module Scrabble =
                 | handList -> 
                     printfn "Hand is not empty, processing handList: %A\n" handList
                     let chars = List.map (fun id -> uintToChar id) handList
-                    List.fold (fun acc c -> 
+                    List.fold (fun acc c ->
+                        printfn "Processing character: %A\n" c 
                         match Dictionary.step c dict with 
-                        | None -> acc
+                        | None -> 
+                            printfn "Dictionary step returned None, returning acc: %A\n" acc
+                            acc
                         | Some (b, cDict) ->
+                            printfn "Dictionary step returned Some: %A\n" (b, cDict)
                             if (b) then 
                                 let nextCoord = (x+1, y)
                                 let id = charToUint c
                                 let wordSoFar : moveList = ((x,y), (id, Set.minElement (Map.find id pieces)))::movesUntilNow
+                                let playableWords = wordSoFar :: playableWords
+                                printfn "Found a word, adding to playableWords calling aux with nextCoord: %A, wordSoFar: %A\n" nextCoord wordSoFar
                                 aux nextCoord (MultiSet.removeSingle (charToUint c) hand) cDict playableWords wordSoFar
-                            else 
-                                acc
+                            else
+                                let nextCoord = (x+1, y)
+                                printfn "Did not find a word, calling aux with nextCoord: %A\n" nextCoord
+                                aux nextCoord (MultiSet.removeSingle (charToUint c) hand) cDict playableWords movesUntilNow
                     ) playableWords chars
-            // Start aux'en med tomme lister     
+            // Start aux'en med tomme lister
+            printfn "Starting aux with initial coord: (0,0), hand: %A\n" st.hand     
             aux (0,0) st.hand st.dict List.empty List.empty
         // Find længste ord fundet med findFirstWord
         let result = List.maxBy List.length (findFirstWord st pieces)
