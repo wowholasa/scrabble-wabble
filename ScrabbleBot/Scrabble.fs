@@ -71,106 +71,99 @@ module Scrabble =
     open System.Threading
 
     type move = (coord * (uint32 * (char * int)))
-    type moveList = move List
+    type movesInWordList = move List
 
-    let rec findFirstWord (hand: MultiSet.MultiSet<uint32>) (board : Parser.board) (accWord : uint32 List) (dict : Dictionary.Dict) (longestWord: uint32 List) (pieces : Map<uint32, tile>) (coord : coord) (direction : coord) : moveList =
-        debugPrint "entering findFirstWord\n"
-        // Convert hand to list
-        let handList = MultiSet.toList hand
-        printfn "Printing handList\n %A" handList
-        let word =
-            debugPrint "Finding longest word\n"
-            List.fold (fun (longestWord : list<uint32>) letter -> 
-                match handList with 
-                | [] ->
-                    printfn "handList is empty returning longestWord\n" 
-                    longestWord
-                | handList -> 
-                    printfn "handList not empty checking for further words\n"
-                    let child = Dictionary.step (uintToChar letter) dict
-                    printfn "Child: %A\n" child
-                    printfn "Char we are stepping with %A\n" letter
 
-                    match child with
-                    | Some (bool, newDict) -> 
+    let rec buildWords (wordUntilNow : uint32 List) (hand : MultiSet.MultiSet<uint32>) (dict : Dictionary.Dict) (words : uint32 List List) : uint32 List List =
+        printfn "Entering buildWords \n"
+        printfn "Printing hand in buildWords %A\n" hand
 
-                        let newCoord = ((fst coord) + (fst direction), (snd coord) + (snd direction))
-                        printfn "New coord: %A\n" newCoord
-                        
-                        printfn "Adding %A to current word\n" letter 
-                        // Add letter to accumulative word
-                        let currentWord = letter::accWord
-                        let currentWordInChars =
-                            List.fold (fun acc letter -> (uintToChar letter)::acc) [] currentWord
-                        printfn "Current word: %A\n" currentWordInChars
+        let wordCount = words.Length
+        printfn "Found %A words\n" wordCount
+        printfn "All found words: %A\n" words
 
-                        // remove letter we looked at from hand 
-                        let newHand = MultiSet.removeSingle letter hand
-                        printfn "New hand: %A\n" newHand
+        // Check whether hand is empty or not
+        if MultiSet.isEmpty hand then
+            words
+        else 
+            // Fold through rest of hand
+            MultiSet.fold (fun acc letter _ ->
+                // Remove letter from hand
+                let newHand = MultiSet.removeSingle letter hand
 
-                        // Build possible words
-                        let words = findFirstWord newHand board currentWord newDict (if currentWord.Length > longestWord.Length then currentWord else longestWord) pieces newCoord direction
-                        printfn "words: %A\n" words
+                let letterAsChar = uintToChar letter
+                printfn "Stepping with letter %A\n" letterAsChar
 
-                        // Check if bool is true to see if currentWord is a playable word
-                        match bool with
-                        | true when currentWord.Length > longestWord.Length -> 
-                            printfn "It is a word: %A\n" currentWordInChars
-                            currentWord
+                let child = Dictionary.step letterAsChar dict
+                
+                let wordUntilNow' = List.append wordUntilNow [letter]
+                let currentWordInChars =
+                    List.fold (fun acc letter -> acc @ [(uintToChar letter)]) [] wordUntilNow'  
+                printfn "WordUntilNow' is currently: %A\n" currentWordInChars
+
+                match child with
+                | Some (isWord, newDict) -> 
+                    let words' =
+                        match isWord with
+                        | true ->  
+                            printfn "This is a word, WordUntilNow' is currently: %A\n" currentWordInChars
+                            wordUntilNow'::acc
                         | false ->
-                            printfn "It is not a word\n"
-                            longestWord
-                        | _ -> 
-                            printfn "It is a shorter word than current longest word\n"
-                            longestWord
-                    | None _ -> longestWord
-            ) longestWord handList
-        let wordInChars =
-            List.fold (fun acc letter -> (uintToChar letter)::acc) [] word
-        printfn "Found longest word: %A\n" wordInChars
+                            printfn "This is not a word \n" 
+                            acc 
+                    let newWords = buildWords wordUntilNow' newHand newDict words'
+                    newWords 
+                | None -> 
+                    printfn "Entering none in match child\n"
+                    acc
+            ) words hand
+
+    let uintListToMoveList (uList : uint32 List) (coord : (int * int)) (direction : (int * int)) (pieces : Map<uint32, tile> ) : movesInWordList =
+
+        let NextCoord = (((fst coord) + (fst direction)),((snd coord) + (snd direction)))
+
         []
 
+    let makeFirstWordList (st : State.state) (pieces : Map<uint32, tile>) : movesInWordList =
+        printfn "Entering makeFirstWordList\n"
+        // Initialising the list we want to return (for clarity)
+        let words =
+            // Fold through first letters in hand.
+            MultiSet.fold (fun acc letter _ -> 
+                // Build words from first letter
+                // Add coord later (Mathilde showed as movebuilder.)
 
-    // let placeFirstWord (st : State.state) (pieces : Map<uint32, tile>) : moveList =
-    //     forcePrint "Entering placeFirstWord\n"
-    //     let findFirstWord (st : State.state) (pieces : Map<uint32, tile>) : moveList List =
-    //         forcePrint "Entering findFirstWord\n"
-    //         let rec aux ((x,y):coord) (hand:MultiSet.MultiSet<uint32>) (dict:Dictionary.Dict) (playableWords:moveList List) (movesUntilNow:moveList)  =
-    //             printfn "Entering aux with coord: %A, hand: %A\n" (x, y) hand
-    //             match MultiSet.toList hand with
-    //             | [] ->
-    //                 printfn "Hand is empty, returning playableWords: %A\n" playableWords
-    //                 playableWords
-    //             | handList ->
-    //                 printfn "Hand is not empty, processing handList: %A\n" handList
-    //                 let chars = List.map (fun id -> uintToChar id) handList
-    //                 List.fold (fun acc c ->
-    //                     printfn "Processing character: %A\n" c
-    //                     match Dictionary.step c dict with
-    //                     | None ->
-    //                         printfn "Dictionary step returned None, returning acc: %A\n" acc
-    //                         acc
-    //                     | Some (b, cDict) ->
-    //                         printfn "Dictionary step returned Some: %A\n" (b, cDict)
-    //                         if (b) then
-    //                             let nextCoord = (x+1, y)
-    //                             let id = charToUint c
-    //                             let wordSoFar : moveList = ((x,y), (id, Set.minElement (Map.find id pieces)))::movesUntilNow
-    //                             let playableWords = wordSoFar :: playableWords
-    //                             printfn "Found a word, adding to playableWords calling aux with nextCoord: %A, wordSoFar: %A\n" nextCoord wordSoFar
-    //                             aux nextCoord (MultiSet.removeSingle (charToUint c) hand) cDict playableWords wordSoFar
-    //                         else
-    //                             let nextCoord = (x+1, y)
-    //                             printfn "Did not find a word, calling aux with nextCoord: %A\n" nextCoord
-    //                             aux nextCoord (MultiSet.removeSingle (charToUint c) hand) cDict playableWords movesUntilNow
-    //                 ) playableWords chars
-    //         // Start aux'en med tomme lister
-    //         printfn "Starting aux with initial coord: (0,0), hand: %A\n" st.hand
-    //         aux (0,0) st.hand st.dict List.empty List.empty
-    //     // Find længste ord fundet med findFirstWord
-    //     let result = List.maxBy List.length (findFirstWord st pieces)
-    //     forcePrint (sprintf "placeFirstWord result: %A" result)
-    //     result
+                // Remove letter from hand
+                let newHand = MultiSet.removeSingle letter st.hand
+
+                let letterAsChar = uintToChar letter
+                printfn "Building words with first letter: %A\n" letterAsChar
+
+                // Step first letter and get dictionary
+                let firstLetterDict : Dictionary.Dict = ((false, st.dict), Dictionary.step letterAsChar st.dict) ||> Option.defaultValue |> snd
+
+                // Save word so far
+                let wordSoFar = [letter]
+                let currentWordInChars =
+                    List.fold (fun acc letter -> acc @ [(uintToChar letter)]) [] wordSoFar
+                printfn "The word so far in chars %A\n" currentWordInChars
+
+                // Build words.
+                let wordsFromFirstLetter = buildWords wordSoFar newHand firstLetterDict []
+
+                wordsFromFirstLetter @ acc
+            ) [] st.hand
+        let wordCount = words.Length
+        printfn "Found %A words\n" wordCount
+        printfn "All found words: %A\n" words
+
+        // Find longest word in words
+        let longestWord = words |> List.maxBy List.length
+        printfn "Longest word: %A\n" longestWord
+
+        
+    
+        []
 
     // Code to figure out if we are playing the first word or just a any other word.
     // let playWord (st : State.state) pieces =
@@ -178,33 +171,13 @@ module Scrabble =
     //     | 0 -> findFirstWord st pieces |> List.maxBy List.length
     //     | _ -> findContinuationWord st pieces |> List.maxBy List.length
 
-    // This was code made with Fink
-    // let placeFirstWord (st : State.state) pieces :  moveList List  =
-    //     // start i 0,0 kig mod højre
-    //     let rec aux ((x,y):coord) (possibleMoves:moveList List) (movesUntilNow:moveList) (dict:Dictionary.Dict) (hand:MultiSet.MultiSet<uint32*tile>) =
-    //         match MultiSet.toList hand with
-    //             | [] -> possibleMoves
-    //             | handList -> List.fold (fun acc ((id,(tile:tile))) ->
-    //                             Set.fold (fun acc (c,pv) ->
-    //                                 match Dictionary.step c dict with
-    //                                 | None -> possibleMoves
-    //                                 | Some(bool,newDict) ->
-    //                                     if (bool) then
-    //                                         let nextCoord = (x+1, y)
-    //                                         aux nextCoord acc (((nextCoord, id))::movesUntilNow) newDict (MultiSet.removeSingle id hand)
-    //                                     else acc
-    //                                 ) acc tile
-    //                             ) possibleMoves handList
-    //     aux (0,0) List.empty List.empty st.dict st.hand
-
-
     let playGame cstream pieces (st: State.state) =
 
         let rec aux (st: State.state) =
             Print.printHand pieces (State.hand st)
 
             if st.playerNumber = 1u && Map.isEmpty st.placedTiles then
-                let test = findFirstWord st.hand st.board [] st.dict [] pieces (0,0) (1,0)
+                let test = makeFirstWordList st pieces
                 let input = System.Console.ReadLine()
                 let move = RegEx.parseMove input
                 send cstream (SMPlay test)
