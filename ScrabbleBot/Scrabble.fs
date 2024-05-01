@@ -75,12 +75,12 @@ module Scrabble =
 
 
     let rec buildWords (wordUntilNow : uint32 List) (hand : MultiSet.MultiSet<uint32>) (dict : Dictionary.Dict) (words : uint32 List List) : uint32 List List =
-        printfn "Entering buildWords \n"
-        printfn "Printing hand in buildWords %A\n" hand
+        // printfn "Entering buildWords \n"
+        // printfn "Printing hand in buildWords %A\n" hand
 
-        let wordCount = words.Length
-        printfn "Found %A words\n" wordCount
-        printfn "All found words: %A\n" words
+        // let wordCount = words.Length
+        // printfn "Found %A words\n" wordCount
+        // printfn "All found words: %A\n" words
 
         // Check whether hand is empty or not
         if MultiSet.isEmpty hand then
@@ -92,61 +92,66 @@ module Scrabble =
                 let newHand = MultiSet.removeSingle letter hand
 
                 let letterAsChar = uintToChar letter
-                printfn "Stepping with letter %A\n" letterAsChar
+                // printfn "Stepping with letter %A\n" letterAsChar
 
                 let child = Dictionary.step letterAsChar dict
                 
                 let wordUntilNow' = List.append wordUntilNow [letter]
-                let currentWordInChars =
-                    List.fold (fun acc letter -> acc @ [(uintToChar letter)]) [] wordUntilNow'  
-                printfn "WordUntilNow' is currently: %A\n" currentWordInChars
+                // let currentWordInChars =
+                //     List.fold (fun acc letter -> acc @ [(uintToChar letter)]) [] wordUntilNow'  
+                // printfn "WordUntilNow' is currently: %A\n" currentWordInChars
 
                 match child with
                 | Some (isWord, newDict) -> 
                     let words' =
                         match isWord with
                         | true ->  
-                            printfn "This is a word, WordUntilNow' is currently: %A\n" currentWordInChars
+                            // printfn "This is a word, WordUntilNow' is currently: %A\n" currentWordInChars
                             wordUntilNow'::acc
                         | false ->
-                            printfn "This is not a word \n" 
+                            // printfn "This is not a word \n" 
                             acc 
                     let newWords = buildWords wordUntilNow' newHand newDict words'
                     newWords 
                 | None -> 
-                    printfn "Entering none in match child\n"
+                    // printfn "Entering none in match child\n"
                     acc
             ) words hand
 
-    let uintListToMoveList (uList : uint32 List) (coord : (int * int)) (direction : (int * int)) (pieces : Map<uint32, tile> ) : movesInWordList =
-
-        let NextCoord = (((fst coord) + (fst direction)),((snd coord) + (snd direction)))
-
-        []
+    let uintListToMoveList (uintList : uint32 List) (coord : coord) (direction : coord) (pieces : Map<uint32, tile> ) : movesInWordList =
+        let moveList = 
+            List.fold (fun (acc, coord) id ->
+                match Map.tryFind id pieces with
+                | Some piece ->
+                    let letter = piece |> Set.minElement |> fst
+                    let pointValue = piece |> Set.minElement |> snd
+                    let move = (coord, ((id), (letter, pointValue)))
+                    let nextCoord = (((fst coord) + (fst direction)),((snd coord) + (snd direction)))
+                    (acc @ [move], nextCoord)
+                | None -> (acc, coord)
+            ) ([], coord) uintList        
+        fst moveList
 
     let makeFirstWordList (st : State.state) (pieces : Map<uint32, tile>) : movesInWordList =
-        printfn "Entering makeFirstWordList\n"
+        // printfn "Entering makeFirstWordList\n"
         // Initialising the list we want to return (for clarity)
         let words =
             // Fold through first letters in hand.
             MultiSet.fold (fun acc letter _ -> 
-                // Build words from first letter
-                // Add coord later (Mathilde showed as movebuilder.)
-
                 // Remove letter from hand
                 let newHand = MultiSet.removeSingle letter st.hand
 
                 let letterAsChar = uintToChar letter
-                printfn "Building words with first letter: %A\n" letterAsChar
+                // printfn "Building words with first letter: %A\n" letterAsChar
 
                 // Step first letter and get dictionary
                 let firstLetterDict : Dictionary.Dict = ((false, st.dict), Dictionary.step letterAsChar st.dict) ||> Option.defaultValue |> snd
 
                 // Save word so far
                 let wordSoFar = [letter]
-                let currentWordInChars =
-                    List.fold (fun acc letter -> acc @ [(uintToChar letter)]) [] wordSoFar
-                printfn "The word so far in chars %A\n" currentWordInChars
+
+                // let currentWordInChars = List.fold (fun acc letter -> acc @ [(uintToChar letter)]) [] wordSoFar
+                // printfn "The word so far in chars %A\n" currentWordInChars
 
                 // Build words.
                 let wordsFromFirstLetter = buildWords wordSoFar newHand firstLetterDict []
@@ -161,9 +166,8 @@ module Scrabble =
         let longestWord = words |> List.maxBy List.length
         printfn "Longest word: %A\n" longestWord
 
-        
-    
-        []
+        let moveList = uintListToMoveList longestWord (0, 0) (1, 0) pieces
+        moveList
 
     // Code to figure out if we are playing the first word or just a any other word.
     // let playWord (st : State.state) pieces =
@@ -172,19 +176,16 @@ module Scrabble =
     //     | _ -> findContinuationWord st pieces |> List.maxBy List.length
 
     let playGame cstream pieces (st: State.state) =
-
+        printfn "Entering playGame \n"
         let rec aux (st: State.state) =
             Print.printHand pieces (State.hand st)
 
             if st.playerNumber = 1u && Map.isEmpty st.placedTiles then
                 let test = makeFirstWordList st pieces
-                let input = System.Console.ReadLine()
-                let move = RegEx.parseMove input
                 send cstream (SMPlay test)
             else
                 forcePrint
                     "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
-
                 let input = System.Console.ReadLine()
                 let move = RegEx.parseMove input
                 send cstream (SMPlay move)
