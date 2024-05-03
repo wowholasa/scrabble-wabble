@@ -25,10 +25,10 @@ let addSingle (a: 'a) (s: MultiSet<'a>) : MultiSet<'a> = add a 1u s
 let remove (a: 'a) (n: uint32) (R s: MultiSet<'a>) : MultiSet<'a> =
     match Map.tryFind a s with
     | None -> R s
-    | x when (numItems a (R s)) < n -> R(s.Remove a)
+    | Some x when (numItems a (R s)) <= n -> R(Map.remove a s)
     | _ -> R(Map.add a ((s.Item a) - n) s)
 
-let removeSingle (a: 'a) (s: MultiSet<'a>) : MultiSet<'a> = remove a 1u s
+let removeSingle (a: 'a) (s: MultiSet<'a>) : MultiSet<'a> = remove a 1u s 
 
 
 let fold (f: 'a -> 'b -> uint32 -> 'a) (x: 'a) (R s: MultiSet<'b>) = Map.fold f x s
@@ -37,7 +37,8 @@ let foldBack (f: 'a -> uint32 -> 'b -> 'b) (R s: MultiSet<'a>) (x: 'b) = Map.fol
 
 // Yellow exercises
 let ofList (lst: 'a list) : MultiSet<'a> = failwith ""
-let toList (R s: MultiSet<'a>) : 'a list = failwith "Hej Mads"
+let toList (R(s) : MultiSet<'a>) : 'a list =
+        (s,[]) ||> Map.foldBack (fun a b lst -> [for _ in 1u .. b -> a] @ lst)
 
 
 let map (_: 'a -> 'b) (_: MultiSet<'a>) : MultiSet<'b> = failwith "" // R ()
