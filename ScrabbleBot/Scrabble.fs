@@ -53,20 +53,24 @@ module State =
           playerNumber: uint32
           hand: MultiSet.MultiSet<uint32>
           placedTiles: Map<coord, (uint32 * (char * int))> 
+          remainingTiles: int
         }
 
-    let mkState b d pn h pt =
+    let mkState b d pn h pt rt =
         { board = b
           dict = d
           playerNumber = pn
           hand = h
-          placedTiles = pt }
+          placedTiles = pt 
+          remainingTiles = rt
+        }
 
     let board st = st.board
     let dict st = st.dict
     let playerNumber st = st.playerNumber
     let hand st = st.hand
     let placedTiles st = st.placedTiles
+    let remainingTiles st = st.remainingTiles
 
 module Scrabble =
     open System.Threading
@@ -261,46 +265,43 @@ module Scrabble =
         //printfn "All found words: %A\n" words
 
         // Find longest word in words
-        let longestWord = words |> List.maxBy List.length
+        let longestWord = 
+            if words.IsEmpty then [] 
+            else words |> List.maxBy List.length
         printfn "Longest word: %A\n" longestWord
         
         let longestWordMinusFirstLetter =
             match longestWord with
             | x::xs -> xs
-            | _ -> failwith "this is so wrong, but it feels so right"
+            | _ -> []
 
         longestWordMinusFirstLetter
 
-
-    // Code to figure out if we are playing the first word or just a any other word.
-    // let playWord (st : State.state) pieces =
-    //     match st.placedTiles.Count with
-    //     | 0 -> findFirstWord st pieces |> List.maxBy List.length
-    //     | _ -> findContinuationWord st pieces |> List.maxBy List.length
+    let convertHandToList (hand : MultiSet.MultiSet<uint32>) : uint32 List =
+        MultiSet.toList hand
 
     let playGame cstream pieces (st: State.state) =
         printfn "Entering playGame \n"
         let rec aux (st: State.state) =
             Print.printHand pieces (State.hand st)
-
-            if st.playerNumber = 1u && Map.isEmpty st.placedTiles then
+            if Map.isEmpty st.placedTiles then
                 let move = makeFirstWordList st pieces
-                send cstream (SMPlay move)
+                if move.IsEmpty && (convertHandToList st.hand).Length = 7 then
+                    send cstream (SMChange (convertHandToList st.hand))
+                else if move.IsEmpty then
+                    send cstream SMPass
+                else
+                    send cstream (SMPlay move)
             else
-                // forcePrint
-                //     "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
-                // let input = System.Console.ReadLine()
-                // let move = RegEx.parseMove input
                 let move = makeSubsequentWordList st pieces
-                send cstream (SMPlay move)
+                printfn "Move.Length: %A\n" move.Length
+                if move.IsEmpty && (convertHandToList st.hand).Length = 7 then 
+                    send cstream (SMChange (convertHandToList st.hand))
+                else if move.IsEmpty then
+                    send cstream SMPass
+                else
+                    send cstream (SMPlay move)
 
-            // remove the force print when you move on from manual input (or when you have learnt the format)
-            // forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
-            // let input = System.Console.ReadLine()
-            // let move = RegEx.parseMove input
-
-            // debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
-            // send cstream (SMPlay move)
 
             let msg = recv cstream
             debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
@@ -312,26 +313,29 @@ module Scrabble =
                 // Remove the tiles used from our hand
                 let removePieces =
                     List.fold (fun acc (_, (id, _)) -> MultiSet.removeSingle id acc) st'.hand ms
-                // debugPrint "\n hand print after remove pieces is called\n"
-                // Print.printHand pieces (State.hand st')
-
                 // Add new tiles to hand
                 let addedPieces =
                     List.fold (fun acc (id, amount) -> MultiSet.add id amount acc) removePieces newPieces
-                // debugPrint "\n Hand print after pieces is added\n"
-                // Print.printHand pieces (State.hand st')
-
                 // Update placeTiles map
                 let updatePlacedTiles =
                     List.fold (fun acc ((x, y), (id, (char, pv))) -> Map.add (x, y) (id, (char, pv)) acc) st'.placedTiles ms
-
+                let updateRemainingTiles = st.remainingTiles - ms.Length 
                 let st' =
                     { st with
                         hand = addedPieces
-                        placedTiles = updatePlacedTiles }
-                // debugPrint "\n Printing map of placedTiles\n"
-                // Map.iter (fun (x, y) id -> printfn "(%d, %d): %d" x y id) st'.placedTiles
+                        placedTiles = updatePlacedTiles 
+                        remainingTiles = updateRemainingTiles }
                 aux st'
+            | RCM(CMChangeSuccess(newTiles)) ->
+                let newHand = 
+                    List.fold (fun acc (id, amount) -> 
+                        MultiSet.add id amount acc
+                    ) MultiSet.empty newTiles
+
+                let st' = State.mkState st.board st.dict st.playerNumber newHand st.placedTiles st.remainingTiles
+                aux st'
+            | RCM(CMPassed(pid)) ->
+                aux st
             | RCM(CMPlayed(pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
                 let st' = st // This state needs to be updated
@@ -343,7 +347,8 @@ module Scrabble =
             | RCM(CMGameOver _) -> ()
             | RCM a -> failwith (sprintf "not implmented: %A" a)
             | RGPE err ->
-                printfn "Gameplay Error:\n%A" err
+                if err.Equals("GPENotEnoughPieces") then printfn "Hovedet er det her:\n%A" err.Head
+                printfn "Gameplay Error:\n%A" err.Head
                 aux st
 
 
@@ -381,4 +386,4 @@ module Scrabble =
 
         let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
 
-        fun () -> playGame cstream tiles (State.mkState board dict playerNumber handSet Map.empty)
+        fun () -> playGame cstream tiles (State.mkState board dict playerNumber handSet Map.empty 100)
