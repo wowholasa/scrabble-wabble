@@ -74,36 +74,23 @@ module Scrabble =
     type movesInWordList = move List
 
     let checkDirection ((x, y) : coord) (direction : coord) (placedTiles : Map<coord, uint32>) : bool =
-        printfn "Entering checkDirection\n"
+        // printfn "Entering checkDirection\n"
         match direction with
         | (1,0) -> // Moving right
             match Map.tryFind (x+1, y) placedTiles with 
             | None when Map.tryFind (x, y+1) placedTiles = None && Map.tryFind (x, y-1) placedTiles = None -> true
             | _ -> 
-                printfn "Hit false in x direction \n"
+                // printfn "Hit false in x direction \n"
                 false
         | (0,1) -> // Moving down
             match Map.tryFind (x, y+1) placedTiles with
             | None when Map.tryFind (x+1, y) placedTiles = None && Map.tryFind (x-1, y) placedTiles = None -> true
             | _ -> 
-                printfn "Hit false in y direction \n"
+                // printfn "Hit false in y direction \n"
                 false 
         | _ -> false
 
     let findDirection ((x, y) : coord) (placedTiles : Map<coord, uint32>) : coord =
-        printfn "Entering FindDirection \n"
-        // match Map.tryFind (x+1, y) placedTiles, Map.tryFind (x-1, y) placedTiles with
-        // | None, None -> 
-        //     match checkDirection (x+1, y) (1, 0) placedTiles with
-        //     | true -> (1,0)
-        //     | _ -> 
-        //         match Map.tryFind (x, y+1) placedTiles, Map.tryFind (x, y-1) placedTiles with
-        //         |None, None -> 
-        //             match checkDirection (x, y+1) (0, 1) placedTiles with
-        //             | true -> (0,1)
-        //             | _ -> (0,0)
-        //         | _ -> (0,0)
-        // | _ -> (0,0)
         let xDirection = 
             match Map.tryFind (x+1, y) placedTiles, Map.tryFind (x-1, y) placedTiles with
             | None, None -> 
@@ -135,7 +122,7 @@ module Scrabble =
         fst moveList
 
     let rec buildWords (wordUntilNow : movesInWordList) (hand : MultiSet.MultiSet<uint32>) (dict : Dictionary.Dict) 
-        ((x, y) : coord) ((dx, dy) : coord) (words : movesInWordList List) (pieces : Map<uint32, tile>): movesInWordList List =
+        ((x, y) : coord) ((dx, dy) : coord) (words : movesInWordList List) (pieces : Map<uint32, tile>) (st : State.state): movesInWordList List =
         // printfn "Entering buildWords \n"
         // printfn "Printing hand in buildWords %A\n" hand
 
@@ -159,26 +146,29 @@ module Scrabble =
                     let move = ((x', y'), ((id), (idAsChar, pointValue)))
                     let nextCoord = (x'+dx, y'+dy) // Calculate next coord
 
-                    // Add move to movesList
-                    let wordUntilNow' = List.append wordUntilNow [move]
+                    // Check direction for nextCoord
+                    if checkDirection nextCoord (dx, dy) st.placedTiles then
+                        // Add move to movesList
+                        let wordUntilNow' = List.append wordUntilNow [move]
 
-                    // find child
-                    let child = Dictionary.step idAsChar dict
-                    match child with
-                    | Some (isWord, newDict) -> 
-                        let words' =
-                            match isWord with
-                            | true ->  
-                                // printfn "This is a word, WordUntilNow' is currently: %A\n" currentWordInChars
-                                wordUntilNow'::acc
-                            | false ->
-                                // printfn "This is not a word \n" 
-                                acc 
-                        let newWords = buildWords wordUntilNow' newHand newDict nextCoord (dx, dy) words' pieces
-                        (newWords, (x',y'))
-                    | None -> 
-                        // printfn "Entering none in match child\n"
-                        (acc, (x',y'))
+                        // find child
+                        let child = Dictionary.step idAsChar dict
+                        match child with
+                        | Some (isWord, newDict) -> 
+                            let words' =
+                                match isWord with
+                                | true ->  
+                                    // printfn "This is a word, WordUntilNow' is currently: %A\n" currentWordInChars
+                                    wordUntilNow'::acc
+                                | false ->
+                                    // printfn "This is not a word \n" 
+                                    acc
+                            let newWords = buildWords wordUntilNow' newHand newDict nextCoord (dx, dy) words' pieces st
+                            (newWords, (x',y'))
+                        | None -> 
+                            // printfn "Entering none in match child\n"
+                            (acc, (x',y')) 
+                    else (acc, (x',y')) 
                 | None -> (acc, (x',y'))             
             ) (words, (x,y)) hand |> fst
 
@@ -207,7 +197,7 @@ module Scrabble =
                 // printfn "The word so far in chars %A\n" currentWordInChars
 
                 // Build words.
-                let wordsFromFirstLetter = buildWords movesSoFar newHand firstLetterDict (fst st.board.center+1, snd st.board.center) (1,0) [] pieces
+                let wordsFromFirstLetter = buildWords movesSoFar newHand firstLetterDict (fst st.board.center+1, snd st.board.center) (1,0) [] pieces st
                 wordsFromFirstLetter @ acc
             ) [] st.hand
         let wordCount = words.Length
@@ -221,23 +211,22 @@ module Scrabble =
         longestWord
         
     let makeSubsequentWordList (st : State.state) (pieces : Map<uint32, tile>) : movesInWordList =
-        printfn "Entering makeSubSequentWord \n"
+        // printfn "Entering makeSubSequentWord \n"
         let tilesToPlayFrom = 
-            printfn "Entering tilesToPlayFrom \n"
+            // printfn "Entering tilesToPlayFrom \n"
             Map.fold (fun acc coord tileId -> 
                 match findDirection coord st.placedTiles with 
                 | (0,0) -> acc
                 | dir -> (tileId, (coord, dir))::acc
             ) [] st.placedTiles
-        printfn "tilesToPlayFrom length: %A\n" tilesToPlayFrom.Length
-
+        // printfn "tilesToPlayFrom length: %A\n" tilesToPlayFrom.Length
 
         let words = 
-            printfn "Entering words in makeSubsequentWord \n"
+            // printfn "Entering words in makeSubsequentWord \n"
             List.fold (fun acc tile ->
-                printfn "Entering fold statement in words in makeSub \n"
+                // printfn "Entering fold statement in words in makeSub \n"
                 let tileId = fst tile
-                printfn "tileId is %A \n" tileId
+                // printfn "tileId is %A \n" tileId
                 let coord = snd tile |> fst
                 let dir = snd tile |> snd
 
@@ -250,7 +239,7 @@ module Scrabble =
                 let movesSoFar = uintListToMoveList wordSoFar coord dir pieces
                 
                 // Build words.
-                let wordsFromFirstChar = buildWords movesSoFar st.hand firstCharDict (fst coord + fst dir, snd coord + snd dir) dir [] pieces
+                let wordsFromFirstChar = buildWords movesSoFar st.hand firstCharDict (fst coord + fst dir, snd coord + snd dir) dir [] pieces st
                 wordsFromFirstChar @ acc
             ) [] tilesToPlayFrom
         let wordCount = words.Length
