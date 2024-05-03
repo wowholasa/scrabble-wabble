@@ -212,13 +212,15 @@ module Scrabble =
                 let wordsFromFirstLetter = buildWords movesSoFar newHand firstLetterDict (fst st.board.center+1, snd st.board.center) (1,0) [] pieces st
                 wordsFromFirstLetter @ acc
             ) [] st.hand
-        let wordCount = words.Length
-        printfn "Found %A words\n" wordCount
+        // let wordCount = words.Length
+        // printfn "Found %A words\n" wordCount
         // printfn "All found words: %A\n" words
 
         // Find longest word in words
-        let longestWord = words |> List.maxBy List.length
-        printfn "Longest word: %A\n" longestWord
+        let longestWord = 
+            if words.IsEmpty then [] 
+            else words |> List.maxBy List.length
+        // printfn "Longest word: %A\n" longestWord
         
         longestWord
         
@@ -260,15 +262,15 @@ module Scrabble =
                 let wordsFromFirstChar = buildWords movesSoFar st.hand firstCharDict (fst coord + fst dir, snd coord + snd dir) dir [] pieces st
                 wordsFromFirstChar @ acc
             ) [] tilesToPlayFrom
-        let wordCount = words.Length
-        printfn "Found %A words\n" wordCount
+        // let wordCount = words.Length
+        // printfn "Found %A words\n" wordCount
         //printfn "All found words: %A\n" words
 
         // Find longest word in words
         let longestWord = 
             if words.IsEmpty then [] 
             else words |> List.maxBy List.length
-        printfn "Longest word: %A\n" longestWord
+        // printfn "Longest word: %A\n" longestWord
         
         let longestWordMinusFirstLetter =
             match longestWord with
@@ -294,7 +296,7 @@ module Scrabble =
                     send cstream (SMPlay move)
             else
                 let move = makeSubsequentWordList st pieces
-                printfn "Move.Length: %A\n" move.Length
+                // printfn "Move.Length: %A\n" move.Length
                 if move.IsEmpty && (convertHandToList st.hand).Length = 7 then 
                     send cstream (SMChange (convertHandToList st.hand))
                 else if move.IsEmpty then
@@ -347,8 +349,10 @@ module Scrabble =
             | RCM(CMGameOver _) -> ()
             | RCM a -> failwith (sprintf "not implmented: %A" a)
             | RGPE err ->
-                if err.Equals("GPENotEnoughPieces") then printfn "Hovedet er det her:\n%A" err.Head
-                printfn "Gameplay Error:\n%A" err.Head
+                if err.Head.Equals(GPENotEnoughPieces) then 
+                    send cstream (SMPass)
+                    printfn "Hovedet er det her:\n%A" err.Head 
+                printfn "Gameplay Error:\n%A" err
                 aux st
 
 
