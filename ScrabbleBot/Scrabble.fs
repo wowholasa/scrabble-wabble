@@ -52,7 +52,8 @@ module State =
           dict: ScrabbleUtil.Dictionary.Dict
           playerNumber: uint32
           hand: MultiSet.MultiSet<uint32>
-          placedTiles: Map<coord, uint32> }
+          placedTiles: Map<coord, (uint32 * (char * int))> 
+        }
 
     let mkState b d pn h pt =
         { board = b
@@ -73,7 +74,7 @@ module Scrabble =
     type move = (coord * (uint32 * (char * int)))
     type movesInWordList = move List
 
-    let checkDirection ((x, y) : coord) (direction : coord) (placedTiles : Map<coord, uint32>) : bool =
+    let checkDirection ((x, y) : coord) (direction : coord) (placedTiles : Map<coord, (uint32 * (char * int))>) : bool =
         // printfn "Entering checkDirection\n"
         match direction with
         | (1,0) -> // Moving right
@@ -90,7 +91,7 @@ module Scrabble =
                 false 
         | _ -> false
 
-    let findDirection ((x, y) : coord) (placedTiles : Map<coord, uint32>) : coord =
+    let findDirection ((x, y) : coord) (placedTiles : Map<coord, (uint32 * (char * int))>) : coord =
         let xDirection = 
             match Map.tryFind (x+1, y) placedTiles, Map.tryFind (x-1, y) placedTiles with
             | None, None -> 
@@ -140,7 +141,12 @@ module Scrabble =
                 let newHand = MultiSet.removeSingle id hand
                 match Map.tryFind id pieces with
                 | Some piece ->
-                    let idAsChar = piece |> Set.minElement |> fst
+                    let idAsChar = 
+                        match st.placedTiles |> Map.tryFind (x'+dx, y'+dy) with
+                        | Some ((id, (char, _))) when id = 0u -> char // If the tile is a wildcard, use the character it is representing
+                        | _ -> 
+                            if id = 0u then 'A' 
+                            else piece |> Set.minElement |> fst
                     // printfn "Stepping with letter %A\n" idAsChar
                     let pointValue = piece |> Set.minElement |> snd
                     let move = ((x', y'), ((id), (idAsChar, pointValue)))
@@ -178,11 +184,13 @@ module Scrabble =
         // Initialising the list we want to return (for clarity)
         let words =
             // Fold through first letters in hand.
-            MultiSet.fold (fun acc letter _ -> 
+            MultiSet.fold (fun acc tileId _ -> 
                 // Remove letter from hand
-                let newHand = MultiSet.removeSingle letter st.hand
+                let newHand = MultiSet.removeSingle tileId st.hand
 
-                let letterAsChar = uintToChar letter
+                let letterAsChar = 
+                    if tileId = 0u then 'A' 
+                    else uintToChar tileId
                 // printfn "Building words with first letter: %A\n" letterAsChar
 
                 // Step first letter and get dictionary
@@ -190,7 +198,7 @@ module Scrabble =
 
                 // Save word so far
 
-                let wordSoFar = [letter]
+                let wordSoFar = [tileId]
                 let movesSoFar = uintListToMoveList wordSoFar st.board.center (1,0) pieces
 
                 // let currentWordInChars = List.fold (fun acc letter -> acc @ [(uintToChar letter)]) [] wordSoFar
@@ -214,7 +222,8 @@ module Scrabble =
         // printfn "Entering makeSubSequentWord \n"
         let tilesToPlayFrom = 
             // printfn "Entering tilesToPlayFrom \n"
-            Map.fold (fun acc coord tileId -> 
+            Map.fold (fun acc coord tile ->
+                let tileId = fst tile 
                 match findDirection coord st.placedTiles with 
                 | (0,0) -> acc
                 | dir -> (tileId, (coord, dir))::acc
@@ -230,7 +239,12 @@ module Scrabble =
                 let coord = snd tile |> fst
                 let dir = snd tile |> snd
 
-                let tileChar = uintToChar tileId
+                let tileChar = 
+                    match st.placedTiles |> Map.tryFind coord with
+                        | Some ((id, (char, _))) when id = 0u -> char // If the tile is a wildcard, use the character it is representing
+                        | _ -> 
+                            if tileId = 0u then 'A' 
+                            else uintToChar tileId
 
                 // Step first character and get dictionary
                 let firstCharDict: Dictionary.Dict = ((false, st.dict), Dictionary.step tileChar st.dict) ||> Option.defaultValue |> snd
@@ -309,7 +323,7 @@ module Scrabble =
 
                 // Update placeTiles map
                 let updatePlacedTiles =
-                    List.fold (fun acc ((x, y), (id, _)) -> Map.add (x, y) id acc) st'.placedTiles ms
+                    List.fold (fun acc ((x, y), (id, (char, pv))) -> Map.add (x, y) (id, (char, pv)) acc) st'.placedTiles ms
 
                 let st' =
                     { st with
