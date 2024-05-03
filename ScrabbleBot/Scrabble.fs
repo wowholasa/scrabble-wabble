@@ -74,30 +74,51 @@ module Scrabble =
     type movesInWordList = move List
 
     let checkDirection ((x, y) : coord) (direction : coord) (placedTiles : Map<coord, uint32>) : bool =
+        printfn "Entering checkDirection\n"
         match direction with
         | (1,0) -> // Moving right
             match Map.tryFind (x+1, y) placedTiles with 
             | None when Map.tryFind (x, y+1) placedTiles = None && Map.tryFind (x, y-1) placedTiles = None -> true
-            | _ -> false
+            | _ -> 
+                printfn "Hit false in x direction \n"
+                false
         | (0,1) -> // Moving down
             match Map.tryFind (x, y+1) placedTiles with
             | None when Map.tryFind (x+1, y) placedTiles = None && Map.tryFind (x-1, y) placedTiles = None -> true
-            | _ -> false 
+            | _ -> 
+                printfn "Hit false in y direction \n"
+                false 
         | _ -> false
 
     let findDirection ((x, y) : coord) (placedTiles : Map<coord, uint32>) : coord =
-        match Map.tryFind (x+1, y) placedTiles with
-        | None when Map.tryFind (x-1, y) placedTiles = None -> 
-            match checkDirection (x+1, y) (1, 0) placedTiles with
-            | true -> (1,0)
+        printfn "Entering FindDirection \n"
+        // match Map.tryFind (x+1, y) placedTiles, Map.tryFind (x-1, y) placedTiles with
+        // | None, None -> 
+        //     match checkDirection (x+1, y) (1, 0) placedTiles with
+        //     | true -> (1,0)
+        //     | _ -> 
+        //         match Map.tryFind (x, y+1) placedTiles, Map.tryFind (x, y-1) placedTiles with
+        //         |None, None -> 
+        //             match checkDirection (x, y+1) (0, 1) placedTiles with
+        //             | true -> (0,1)
+        //             | _ -> (0,0)
+        //         | _ -> (0,0)
+        // | _ -> (0,0)
+        let xDirection = 
+            match Map.tryFind (x+1, y) placedTiles, Map.tryFind (x-1, y) placedTiles with
+            | None, None -> 
+                match checkDirection (x+1, y) (1, 0) placedTiles with
+                | true -> (1,0)
+                | _ -> (0,0)
             | _ -> (0,0)
-        | _ -> 
-            match Map.tryFind (x, y+1) placedTiles with
-            | None when Map.tryFind (x, y-1) placedTiles = None -> 
-                match checkDirection (x, y) (0, 1) placedTiles with // Here we check if 
+        let yDirection = 
+            match Map.tryFind (x, y+1) placedTiles, Map.tryFind (x, y-1) placedTiles with
+            | None, None -> 
+                match checkDirection (x, y+1) (0, 1) placedTiles with
                 | true -> (0,1)
                 | _ -> (0,0)
             | _ -> (0,0)
+        if xDirection <> (0,0) then xDirection else yDirection
 
     let uintListToMoveList (uintList : uint32 List) (coord : coord) (direction : coord) (pieces : Map<uint32, tile> ) : movesInWordList =
         let moveList = 
@@ -154,7 +175,7 @@ module Scrabble =
                                 // printfn "This is not a word \n" 
                                 acc 
                         let newWords = buildWords wordUntilNow' newHand newDict nextCoord (dx, dy) words' pieces
-                        (newWords, nextCoord)
+                        (newWords, (x',y'))
                     | None -> 
                         // printfn "Entering none in match child\n"
                         (acc, (x',y'))
@@ -186,12 +207,12 @@ module Scrabble =
                 // printfn "The word so far in chars %A\n" currentWordInChars
 
                 // Build words.
-                let wordsFromFirstLetter = buildWords movesSoFar newHand firstLetterDict st.board.center (1,0) [] pieces
+                let wordsFromFirstLetter = buildWords movesSoFar newHand firstLetterDict (fst st.board.center+1, snd st.board.center) (1,0) [] pieces
                 wordsFromFirstLetter @ acc
             ) [] st.hand
         let wordCount = words.Length
         printfn "Found %A words\n" wordCount
-        printfn "All found words: %A\n" words
+        // printfn "All found words: %A\n" words
 
         // Find longest word in words
         let longestWord = words |> List.maxBy List.length
@@ -199,41 +220,53 @@ module Scrabble =
         
         longestWord
         
-    // let makeSubsequentWordList (st : State.state) (pieces : Map<uint32, tile>) : movesInWordList =
-    //     let tilesToPlayFrom = 
-    //         Map.fold (fun acc coord tileId -> 
-    //             match findDirection coord st.placedTiles with 
-    //             | (0,0) -> acc
-    //             | dir -> (tileId, (coord, dir))::acc
-    //         ) [] st.placedTiles
+    let makeSubsequentWordList (st : State.state) (pieces : Map<uint32, tile>) : movesInWordList =
+        printfn "Entering makeSubSequentWord \n"
+        let tilesToPlayFrom = 
+            printfn "Entering tilesToPlayFrom \n"
+            Map.fold (fun acc coord tileId -> 
+                match findDirection coord st.placedTiles with 
+                | (0,0) -> acc
+                | dir -> (tileId, (coord, dir))::acc
+            ) [] st.placedTiles
+        printfn "tilesToPlayFrom length: %A\n" tilesToPlayFrom.Length
 
-    //     let words = 
-    //         List.fold (fun acc tile ->
-    //             let tileId = fst tile
-    //             let coord = snd tile |> fst
-    //             let dir = snd tile |> snd
 
-    //             let tileChar = uintToChar tileId
+        let words = 
+            printfn "Entering words in makeSubsequentWord \n"
+            List.fold (fun acc tile ->
+                printfn "Entering fold statement in words in makeSub \n"
+                let tileId = fst tile
+                printfn "tileId is %A \n" tileId
+                let coord = snd tile |> fst
+                let dir = snd tile |> snd
 
-    //             // Step first character and get dictionary
-    //             let firstCharDict: Dictionary.Dict = ((false, st.dict), Dictionary.step tileChar st.dict) ||> Option.defaultValue |> snd
-    //             // Save word so far
-    //             let wordSoFar = [tileId]
+                let tileChar = uintToChar tileId
 
-    //             // Build words.
-    //             let wordsFromFirstChar = buildWords wordSoFar st.hand firstCharDict []
-    //             wordsFromFirstChar @ acc
-    //         ) [] tilesToPlayFrom
-    //     //let wordCount = (fst words).Length
-    //     //printfn "Found %A words\n" wordCount
-    //     //printfn "All found words: %A\n" words
+                // Step first character and get dictionary
+                let firstCharDict: Dictionary.Dict = ((false, st.dict), Dictionary.step tileChar st.dict) ||> Option.defaultValue |> snd
+                // Save word so far
+                let wordSoFar = [tileId]
+                let movesSoFar = uintListToMoveList wordSoFar coord dir pieces
+                
+                // Build words.
+                let wordsFromFirstChar = buildWords movesSoFar st.hand firstCharDict (fst coord + fst dir, snd coord + snd dir) dir [] pieces
+                wordsFromFirstChar @ acc
+            ) [] tilesToPlayFrom
+        let wordCount = words.Length
+        printfn "Found %A words\n" wordCount
+        //printfn "All found words: %A\n" words
 
-    //     // Find longest word in words
-    //     let longestWord = words |> List.maxBy List.length
-    //     printfn "Longest word: %A\n" longestWord
+        // Find longest word in words
+        let longestWord = words |> List.maxBy List.length
+        printfn "Longest word: %A\n" longestWord
+        
+        let longestWordMinusFirstLetter =
+            match longestWord with
+            | x::xs -> xs
+            | _ -> failwith "this is so wrong, but it feels so right"
 
-    //     let moveList = uintListToMoveList longestWord (st.board.center) (1, 0) pieces
-    //     moveList
+        longestWordMinusFirstLetter
 
 
     // Code to figure out if we are playing the first word or just a any other word.
@@ -251,11 +284,11 @@ module Scrabble =
                 let move = makeFirstWordList st pieces
                 send cstream (SMPlay move)
             else
-                forcePrint
-                    "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
-                let input = System.Console.ReadLine()
-                let move = RegEx.parseMove input
-                // let move = makeSubsequentWordList st pieces
+                // forcePrint
+                //     "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
+                // let input = System.Console.ReadLine()
+                // let move = RegEx.parseMove input
+                let move = makeSubsequentWordList st pieces
                 send cstream (SMPlay move)
 
             // remove the force print when you move on from manual input (or when you have learnt the format)
