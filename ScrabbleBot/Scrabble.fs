@@ -131,6 +131,32 @@ module Scrabble =
                 | None -> (acc, coord)
             ) ([], coord) uintList        
         fst moveList
+    let checkDirection ((x, y) : coord) (direction : coord) (placedTiles : Map<coord, uint32>) : bool =
+        match direction with
+        | (1,0) -> // Moving right
+            match Map.tryFind (x+1, y) placedTiles with 
+            | None when Map.tryFind (x, y+1) placedTiles = None && Map.tryFind (x, y-1) placedTiles = None -> true
+            | _ -> false
+        | (0,1) -> // Moving down
+            match Map.tryFind (x, y+1) placedTiles with
+            | None when Map.tryFind (x+1, y) placedTiles = None && Map.tryFind (x-1, y) placedTiles = None -> true
+            | _ -> false 
+        | _ -> false
+
+    let findDirection ((x, y) : coord) (placedTiles : Map<coord, uint32>) : coord =
+        match Map.tryFind (x+1, y) placedTiles with
+        | None when Map.tryFind (x-1, y) placedTiles = None -> 
+            match checkDirection (x+1, y) (1, 0) placedTiles with
+            | true -> (1,0)
+            | _ -> (0,0)
+        | _ -> 
+            match Map.tryFind (x, y+1) placedTiles with
+            | None when Map.tryFind (x, y-1) placedTiles = None -> 
+                match checkDirection (x, y) (0, 1) placedTiles with // Here we check if 
+                | true -> (0,1)
+                | _ -> (0,0)
+            | _ -> (0,0)
+
 
     let makeFirstWordList (st : State.state) (pieces : Map<uint32, tile>) : movesInWordList =
         // printfn "Entering makeFirstWordList\n"
@@ -162,12 +188,25 @@ module Scrabble =
         printfn "Found %A words\n" wordCount
         printfn "All found words: %A\n" words
 
+        
+
         // Find longest word in words
         let longestWord = words |> List.maxBy List.length
         printfn "Longest word: %A\n" longestWord
 
-        let moveList = uintListToMoveList longestWord (0, 0) (1, 0) pieces
+        let moveList = uintListToMoveList longestWord (st.board.center) (1, 0) pieces
         moveList
+
+    let makeSubsequentWordList (st : State.state) (pieces : Map<uint32, tile>) : movesInWordList =
+        let tilesToPlayFrom = 
+            Map.fold (fun acc coord tileId -> 
+                
+            ) [] st.placedTiles
+
+        // let words = 
+        //     List.fold (fun acc )
+
+
 
     // Code to figure out if we are playing the first word or just a any other word.
     // let playWord (st : State.state) pieces =
