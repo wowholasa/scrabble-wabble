@@ -51,15 +51,17 @@ module State =
         { board: Parser.board
           dict: ScrabbleUtil.Dictionary.Dict
           playerNumber: uint32
+          numberOfPlayers: uint32
           hand: MultiSet.MultiSet<uint32>
           placedTiles: Map<coord, (uint32 * (char * int))> 
           remainingTiles: int
         }
 
-    let mkState b d pn h pt rt =
+    let mkState b d pn np h pt rt =
         { board = b
           dict = d
           playerNumber = pn
+          numberOfPlayers = np
           hand = h
           placedTiles = pt 
           remainingTiles = rt
@@ -79,20 +81,15 @@ module Scrabble =
     type movesInWordList = move List
 
     let checkDirection ((x, y) : coord) (direction : coord) (placedTiles : Map<coord, (uint32 * (char * int))>) : bool =
-        // printfn "Entering checkDirection\n"
         match direction with
         | (1,0) -> // Moving right
             match Map.tryFind (x+1, y) placedTiles with 
             | None when Map.tryFind (x, y+1) placedTiles = None && Map.tryFind (x, y-1) placedTiles = None -> true
-            | _ -> 
-                // printfn "Hit false in x direction \n"
-                false
+            | _ -> false
         | (0,1) -> // Moving down
             match Map.tryFind (x, y+1) placedTiles with
             | None when Map.tryFind (x+1, y) placedTiles = None && Map.tryFind (x-1, y) placedTiles = None -> true
-            | _ -> 
-                // printfn "Hit false in y direction \n"
-                false 
+            | _ -> false 
         | _ -> false
 
     let findDirection ((x, y) : coord) (placedTiles : Map<coord, (uint32 * (char * int))>) : coord =
@@ -128,13 +125,6 @@ module Scrabble =
 
     let rec buildWords (wordUntilNow : movesInWordList) (hand : MultiSet.MultiSet<uint32>) (dict : Dictionary.Dict) 
         ((x, y) : coord) ((dx, dy) : coord) (words : movesInWordList List) (pieces : Map<uint32, tile>) (st : State.state): movesInWordList List =
-        // printfn "Entering buildWords \n"
-        // printfn "Printing hand in buildWords %A\n" hand
-
-        // let wordCount = words.Length
-        // printfn "Found %A words\n" wordCount
-        // printfn "All found words: %A\n" words
-
         // Check whether hand is empty or not
         if MultiSet.isEmpty hand then
             words
@@ -151,7 +141,6 @@ module Scrabble =
                         | _ -> 
                             if id = 0u then 'A' 
                             else piece |> Set.minElement |> fst
-                    // printfn "Stepping with letter %A\n" idAsChar
                     let pointValue = piece |> Set.minElement |> snd
                     let move = ((x', y'), ((id), (idAsChar, pointValue)))
                     let nextCoord = (x'+dx, y'+dy) // Calculate next coord
@@ -168,15 +157,12 @@ module Scrabble =
                             let words' =
                                 match isWord with
                                 | true ->  
-                                    // printfn "This is a word, WordUntilNow' is currently: %A\n" currentWordInChars
                                     wordUntilNow'::acc
                                 | false ->
-                                    // printfn "This is not a word \n" 
                                     acc
                             let newWords = buildWords wordUntilNow' newHand newDict nextCoord (dx, dy) words' pieces st
                             (newWords, (x',y'))
                         | None -> 
-                            // printfn "Entering none in match child\n"
                             (acc, (x',y')) 
                     else (acc, (x',y')) 
                 | None -> (acc, (x',y'))             
@@ -184,64 +170,46 @@ module Scrabble =
 
 
     let makeFirstWordList (st : State.state) (pieces : Map<uint32, tile>) : movesInWordList =
-        // printfn "Entering makeFirstWordList\n"
-        // Initialising the list we want to return (for clarity)
         let words =
             // Fold through first letters in hand.
             MultiSet.fold (fun acc tileId _ -> 
                 // Remove letter from hand
                 let newHand = MultiSet.removeSingle tileId st.hand
-
+                
                 let letterAsChar = 
                     if tileId = 0u then 'A' 
                     else uintToChar tileId
-                // printfn "Building words with first letter: %A\n" letterAsChar
 
                 // Step first letter and get dictionary
                 let firstLetterDict : Dictionary.Dict = ((false, st.dict), Dictionary.step letterAsChar st.dict) ||> Option.defaultValue |> snd
 
                 // Save word so far
-
                 let wordSoFar = [tileId]
                 let movesSoFar = uintListToMoveList wordSoFar st.board.center (1,0) pieces
-
-                // let currentWordInChars = List.fold (fun acc letter -> acc @ [(uintToChar letter)]) [] wordSoFar
-                // printfn "The word so far in chars %A\n" currentWordInChars
 
                 // Build words.
                 let wordsFromFirstLetter = buildWords movesSoFar newHand firstLetterDict (fst st.board.center+1, snd st.board.center) (1,0) [] pieces st
                 wordsFromFirstLetter @ acc
             ) [] st.hand
-        // let wordCount = words.Length
-        // printfn "Found %A words\n" wordCount
-        // printfn "All found words: %A\n" words
 
         // Find longest word in words
         let longestWord = 
             if words.IsEmpty then [] 
             else words |> List.maxBy List.length
-        // printfn "Longest word: %A\n" longestWord
-        
         longestWord
         
     let makeSubsequentWordList (st : State.state) (pieces : Map<uint32, tile>) : movesInWordList =
-        // printfn "Entering makeSubSequentWord \n"
         let tilesToPlayFrom = 
-            // printfn "Entering tilesToPlayFrom \n"
             Map.fold (fun acc coord tile ->
                 let tileId = fst tile 
                 match findDirection coord st.placedTiles with 
                 | (0,0) -> acc
                 | dir -> (tileId, (coord, dir))::acc
             ) [] st.placedTiles
-        // printfn "tilesToPlayFrom length: %A\n" tilesToPlayFrom.Length
 
         let words = 
-            // printfn "Entering words in makeSubsequentWord \n"
             List.fold (fun acc tile ->
-                // printfn "Entering fold statement in words in makeSub \n"
                 let tileId = fst tile
-                // printfn "tileId is %A \n" tileId
                 let coord = snd tile |> fst
                 let dir = snd tile |> snd
 
@@ -262,9 +230,6 @@ module Scrabble =
                 let wordsFromFirstChar = buildWords movesSoFar st.hand firstCharDict (fst coord + fst dir, snd coord + snd dir) dir [] pieces st
                 wordsFromFirstChar @ acc
             ) [] tilesToPlayFrom
-        // let wordCount = words.Length
-        // printfn "Found %A words\n" wordCount
-        //printfn "All found words: %A\n" words
 
         // Find longest word in words
         let longestWord = 
@@ -283,7 +248,6 @@ module Scrabble =
         MultiSet.toList hand
 
     let playGame cstream pieces (st: State.state) =
-        printfn "Entering playGame \n"
         let rec aux (st: State.state) =
             Print.printHand pieces (State.hand st)
             if Map.isEmpty st.placedTiles then
@@ -295,6 +259,7 @@ module Scrabble =
                 else
                     send cstream (SMPlay move)
             else
+                printfn "There is a word on the board, so we use second algo"
                 let move = makeSubsequentWordList st pieces
                 // printfn "Move.Length: %A\n" move.Length
                 if move.IsEmpty && (convertHandToList st.hand).Length = 7 then 
@@ -322,36 +287,45 @@ module Scrabble =
                 let updatePlacedTiles =
                     List.fold (fun acc ((x, y), (id, (char, pv))) -> Map.add (x, y) (id, (char, pv)) acc) st'.placedTiles ms
                 let updateRemainingTiles = st.remainingTiles - ms.Length 
-                let st' =
-                    { st with
-                        hand = addedPieces
-                        placedTiles = updatePlacedTiles 
-                        remainingTiles = updateRemainingTiles }
+                let nextPlayerId = st.playerNumber % st.numberOfPlayers + 1u
+                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers addedPieces updatePlacedTiles updateRemainingTiles
+                // let st' =
+                //     { st with
+                //         hand = addedPieces
+                //         placedTiles = updatePlacedTiles 
+                //         remainingTiles = updateRemainingTiles }
                 aux st'
             | RCM(CMChangeSuccess(newTiles)) ->
                 let newHand = 
                     List.fold (fun acc (id, amount) -> 
                         MultiSet.add id amount acc
                     ) MultiSet.empty newTiles
-
-                let st' = State.mkState st.board st.dict st.playerNumber newHand st.placedTiles st.remainingTiles
+                let nextPlayerId = st.playerNumber % st.numberOfPlayers + 1u
+                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers newHand st.placedTiles st.remainingTiles
                 aux st'
             | RCM(CMPassed(pid)) ->
-                aux st
+                let nextPlayerId = pid % st.numberOfPlayers + 1u
+                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers st.hand st.placedTiles st.remainingTiles
+                aux st'
             | RCM(CMPlayed(pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
-                let st' = st // This state needs to be updated
+                // printfn "Placed tiles before update %A \n" st.placedTiles.Count
+                let updatePlacedTiles =
+                    List.fold (fun acc ((x, y), (id, (char, pv))) -> Map.add (x, y) (id, (char, pv)) acc) st.placedTiles ms
+                // printfn "Placed tiles after update %A \n" updatePlacedTiles.Count
+                let nextPlayerId = pid % st.numberOfPlayers + 1u
+                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers st.hand updatePlacedTiles st.remainingTiles
                 aux st'
             | RCM(CMPlayFailed(pid, ms)) ->
                 (* Failed play. Update your state *)
-                let st' = st // This state needs to be updated
+                let nextPlayerId = pid % st.numberOfPlayers + 1u
+                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers st.hand st.placedTiles st.remainingTiles
                 aux st'
             | RCM(CMGameOver _) -> ()
             | RCM a -> failwith (sprintf "not implmented: %A" a)
             | RGPE err ->
                 if err.Head.Equals(GPENotEnoughPieces) then 
                     send cstream (SMPass)
-                    printfn "Hovedet er det her:\n%A" err.Head 
                 printfn "Gameplay Error:\n%A" err
                 aux st
 
@@ -390,4 +364,4 @@ module Scrabble =
 
         let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
 
-        fun () -> playGame cstream tiles (State.mkState board dict playerNumber handSet Map.empty 100)
+        fun () -> playGame cstream tiles (State.mkState board dict playerNumber numPlayers handSet Map.empty 100)
