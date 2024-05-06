@@ -234,13 +234,11 @@ module Scrabble =
         let longestWord = 
             if words.IsEmpty then [] 
             else words |> List.maxBy List.length
-        // printfn "Longest word: %A\n" longestWord
         
         let longestWordMinusFirstLetter =
             match longestWord with
             | x::xs -> xs
             | _ -> []
-
         longestWordMinusFirstLetter
 
     let convertHandToList (hand : MultiSet.MultiSet<uint32>) : uint32 List =
@@ -250,7 +248,6 @@ module Scrabble =
         let rec aux (st: State.state) (isMyTurn : bool) =
             Print.printHand pieces (State.hand st)
             if  Map.isEmpty st.placedTiles && isMyTurn then
-                debugPrint (sprintf "============ Trying to play first word of the game. ============\n")
                 let move = makeFirstWordList st pieces
                 if move.IsEmpty && (convertHandToList st.hand).Length = 7 then
                     send cstream (SMChange (convertHandToList st.hand))
@@ -259,7 +256,6 @@ module Scrabble =
                 else
                     send cstream (SMPlay move)
             else if isMyTurn then
-                debugPrint (sprintf "============ Trying to play any other word of the game. ============\n")
                 // printfn "There is a word on the board, so we use second algo"
                 let move = makeSubsequentWordList st pieces
                 // printfn "Move.Length: %A\n" move.Length
@@ -279,7 +275,6 @@ module Scrabble =
             match msg with
             | RCM(CMPlaySuccess(ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
-                debugPrint (sprintf "============ Successful play by you. ============\n")
                 let st' = st
                 // Remove the tiles used from our hand
                 let removePieces =
@@ -292,33 +287,25 @@ module Scrabble =
                     List.fold (fun acc ((x, y), (id, (char, pv))) -> Map.add (x, y) (id, (char, pv)) acc) st'.placedTiles ms
                 
                 let st' = State.mkState st.board st.dict st.playerNumber st.numberOfPlayers st.playerTurn addedPieces updatePlacedTiles
-               
                 aux st' (st.playerNumber % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMChangeSuccess(newTiles)) ->
                 let newHand = 
                     List.fold (fun acc (id, amount) -> 
                         MultiSet.add id amount acc
                     ) MultiSet.empty newTiles
-                
+
                 let st' = State.mkState st.board st.dict st.playerNumber st.numberOfPlayers st.playerTurn newHand st.placedTiles
                 aux st' (st.playerNumber % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMPassed(pid)) ->
-                debugPrint (sprintf "============ OTHER PLAYER PASSED ============\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-                
-                // let st' = State.mkState st.board st.dict st.playerTurn st.numberOfPlayers st.playerTurn st.hand st.placedTiles
                 aux st (pid % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMPlayed(pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
-                // printfn "Placed tiles before update %A \n" st.placedTiles.Count
-                debugPrint (sprintf "============ CMPlayed ============\n")
                 let updatePlacedTiles =
                     List.fold (fun acc ((x, y), (id, (char, pv))) -> Map.add (x, y) (id, (char, pv)) acc) st.placedTiles ms
-                // printfn "Placed tiles after update %A \n" updatePlacedTiles.Count
                 
                 let st' = State.mkState st.board st.dict st.playerNumber st.numberOfPlayers st.playerTurn st.hand updatePlacedTiles
                 aux st' (pid % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMPlayFailed(pid, ms)) ->
-                debugPrint (sprintf "============ CMPlayFailed ============\n")
                 (* Failed play. Update your state *)
                 aux st (pid % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMGameOver _) -> ()
