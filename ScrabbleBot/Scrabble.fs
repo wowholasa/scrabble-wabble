@@ -246,7 +246,7 @@ module Scrabble =
 
     let playGame cstream pieces (st: State.state) =
         let rec aux (st: State.state) (isMyTurn : bool) =
-            Print.printHand pieces (State.hand st)
+            // Print.printHand pieces (State.hand st)
             if  Map.isEmpty st.placedTiles && isMyTurn then
                 let move = makeFirstWordList st pieces
                 if move.IsEmpty && (convertHandToList st.hand).Length = 7 then
@@ -256,9 +256,7 @@ module Scrabble =
                 else
                     send cstream (SMPlay move)
             else if isMyTurn then
-                // printfn "There is a word on the board, so we use second algo"
                 let move = makeSubsequentWordList st pieces
-                // printfn "Move.Length: %A\n" move.Length
                 if move.IsEmpty && (convertHandToList st.hand).Length = 7 then 
                     send cstream (SMChange (convertHandToList st.hand))
                 else if move.IsEmpty then
