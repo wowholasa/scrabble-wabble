@@ -259,7 +259,7 @@ module Scrabble =
                 else
                     send cstream (SMPlay move)
             else
-                printfn "There is a word on the board, so we use second algo"
+                // printfn "There is a word on the board, so we use second algo"
                 let move = makeSubsequentWordList st pieces
                 // printfn "Move.Length: %A\n" move.Length
                 if move.IsEmpty && (convertHandToList st.hand).Length = 7 then 
@@ -328,8 +328,6 @@ module Scrabble =
                     send cstream (SMPass)
                 printfn "Gameplay Error:\n%A" err
                 aux st
-
-
         aux st
 
     let startGame
