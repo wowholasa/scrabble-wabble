@@ -18,7 +18,7 @@ let spawnMultiples name dict bot =
 
 [<EntryPoint>]
 let main argv =
-    ScrabbleUtil.DebugPrint.toggleDebugPrint true // Change to false to supress debug output
+    ScrabbleUtil.DebugPrint.toggleDebugPrint false // Change to false to supress debug output
 
     System.Console.BackgroundColor <- System.ConsoleColor.White
     System.Console.ForegroundColor <- System.ConsoleColor.Black
@@ -62,8 +62,10 @@ let main argv =
 
     
     // Uncomment this line to call your client
-    let players = [ ("ScrabbleWabble", dictionary, ScrabbleWabble.Scrabble.startGame) ]
-    // let players = spawnMultiples "OxyphenButazone" dictionary Oxyphenbutazone.Scrabble.startGame 2
+    // let players = [ ("ScrabbleWabble", dictionary, ScrabbleWabble.Scrabble.startGame)]
+    let players = 
+        [ ("ScrabbleWabble", dictionary, ScrabbleWabble.Scrabble.startGame)
+          ("Oxyphenbutazone", dictionary, Oxyphenbutazone.Scrabble.startGame)]
 
 
     do ScrabbleServer.Comm.startGame board dictionary handSize timeout tiles seed port players
