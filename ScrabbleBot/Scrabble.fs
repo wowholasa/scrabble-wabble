@@ -247,9 +247,9 @@ module Scrabble =
         MultiSet.toList hand
 
     let playGame cstream pieces (st: State.state) =
-        let rec aux (st: State.state) =
+        let rec aux (st: State.state) (isMyTurn : bool) =
             Print.printHand pieces (State.hand st)
-            if  st.playerNumber = st.playerTurn && Map.isEmpty st.placedTiles then
+            if  Map.isEmpty st.placedTiles && isMyTurn then
                 debugPrint (sprintf "============ Trying to play first word of the game. ============\n")
                 let move = makeFirstWordList st pieces
                 if move.IsEmpty && (convertHandToList st.hand).Length = 7 then
@@ -258,7 +258,7 @@ module Scrabble =
                     send cstream SMPass
                 else
                     send cstream (SMPlay move)
-            else if st.playerNumber = st.playerTurn then
+            else if isMyTurn then
                 debugPrint (sprintf "============ Trying to play any other word of the game. ============\n")
                 // printfn "There is a word on the board, so we use second algo"
                 let move = makeSubsequentWordList st pieces
@@ -290,27 +290,23 @@ module Scrabble =
                 // Update placeTiles map
                 let updatePlacedTiles =
                     List.fold (fun acc ((x, y), (id, (char, pv))) -> Map.add (x, y) (id, (char, pv)) acc) st'.placedTiles ms
-                let nextPlayerId = st.playerNumber % st.numberOfPlayers + 1u
-                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers st.playerTurn addedPieces updatePlacedTiles
-                // let st' =
-                //     { st with
-                //         hand = addedPieces
-                //         placedTiles = updatePlacedTiles 
-                //         remainingTiles = updateRemainingTiles }
-                aux st'
+                
+                let st' = State.mkState st.board st.dict st.playerNumber st.numberOfPlayers st.playerTurn addedPieces updatePlacedTiles
+               
+                aux st' (st.playerNumber % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMChangeSuccess(newTiles)) ->
                 let newHand = 
                     List.fold (fun acc (id, amount) -> 
                         MultiSet.add id amount acc
                     ) MultiSet.empty newTiles
-                let nextPlayerId = st.playerNumber % st.numberOfPlayers + 1u
-                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers st.playerTurn newHand st.placedTiles
-                aux st'
+                
+                let st' = State.mkState st.board st.dict st.playerNumber st.numberOfPlayers st.playerTurn newHand st.placedTiles
+                aux st' (st.playerNumber % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMPassed(pid)) ->
                 debugPrint (sprintf "============ OTHER PLAYER PASSED ============\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-                let nextPlayerId = pid % st.numberOfPlayers + 1u
-                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers st.playerTurn st.hand st.placedTiles
-                aux st'
+                
+                // let st' = State.mkState st.board st.dict st.playerTurn st.numberOfPlayers st.playerTurn st.hand st.placedTiles
+                aux st (pid % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMPlayed(pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
                 // printfn "Placed tiles before update %A \n" st.placedTiles.Count
@@ -318,23 +314,21 @@ module Scrabble =
                 let updatePlacedTiles =
                     List.fold (fun acc ((x, y), (id, (char, pv))) -> Map.add (x, y) (id, (char, pv)) acc) st.placedTiles ms
                 // printfn "Placed tiles after update %A \n" updatePlacedTiles.Count
-                let nextPlayerId = pid % st.numberOfPlayers + 1u
-                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers st.playerTurn st.hand updatePlacedTiles
-                aux st'
+                
+                let st' = State.mkState st.board st.dict st.playerNumber st.numberOfPlayers st.playerTurn st.hand updatePlacedTiles
+                aux st' (pid % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMPlayFailed(pid, ms)) ->
                 debugPrint (sprintf "============ CMPlayFailed ============\n")
                 (* Failed play. Update your state *)
-                let nextPlayerId = pid % st.numberOfPlayers + 1u
-                let st' = State.mkState st.board st.dict nextPlayerId st.numberOfPlayers st.playerTurn st.hand st.placedTiles
-                aux st'
+                aux st (pid % st.numberOfPlayers + 1u = st.playerNumber)
             | RCM(CMGameOver _) -> ()
             | RCM a -> failwith (sprintf "not implmented: %A" a)
             | RGPE err ->
                 if err.Head.Equals(GPENotEnoughPieces) then 
                     send cstream (SMPass)
                 printfn "Gameplay Error:\n%A" err
-                aux st
-        aux st
+                aux st (st.playerNumber % st.numberOfPlayers + 1u = st.playerNumber)
+        aux st (st.playerTurn = st.playerNumber)
 
     let startGame
         (boardP: boardProg)
