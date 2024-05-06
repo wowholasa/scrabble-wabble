@@ -17,3 +17,4 @@ Run the bot
 dotnet run
 ```
 
+Made by Max Brix Koch <mbko@itu.dk> & Mads Christian Nørklit Jensen <macj@itu.dk>
